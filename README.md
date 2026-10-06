@@ -10,6 +10,8 @@
 - 免费云构建成功：<https://github.com/63243254/WatchStress/actions/runs/37474088750>。
 - Xcode 27.0 / 27A266a 编译并归档三个 Target；5 个 Swift 算法测试、6 个包结构测试通过。
 - 已生成 `WatchStress-resign-required.ipa`，本地下载后包结构复核通过。
+- Windows 实验性安装工具构建成功：<https://github.com/63243254/WatchStress/actions/runs/37475879730>。
+- 安装工具的 4 个 Rust 测试通过；下载的 ZIP 摘要和 EXE 校验和均核对通过。
 - **尚未签名到设备，尚未在手机或手表安装验证。**
 - Windows 手表侧载方案仍是实验性项目，没有明确覆盖 S12 / watchOS 27 的兼容承诺。
 - 第一版仅在打开 App 或点击刷新时更新；不包含全天后台自动更新。
@@ -81,6 +83,7 @@ Xcode 27+ macOS runner / 借用的 Mac；不要将构建失败当作设备不支
 本仓库的 `build-installer.yml` 从上述固定源码构建专用实验工具，补充 Watch / Widget
 共享组配置、缓存标识改写和描述文件权限检查。详细步骤、修改与验证边界见
 [Windows 安装验证](WINDOWS_INSTALL.md)。该工具仍需要独立的真机验证。
+成功构建的 `WatchStress-Installer-experimental.exe` 是未进行 Windows 发布者签名的便携程序。
 
 需要逐项验证：
 

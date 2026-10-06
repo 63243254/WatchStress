@@ -19,6 +19,12 @@
 
 这是独立的个人实验构建，不是官方 iLoader 发行版，不保证 S12 / watchOS 27 兼容。
 上游 iLoader / isideload 的许可证与署名随工具一同保留。
+官方 iLoader：<https://iloader.app> / <https://github.com/nab138/iloader>。
+
+当前构建已通过 4 个 Rust 测试与 Windows GUI 编译：
+<https://github.com/63243254/WatchStress/actions/runs/37475879730>。
+下载后的 EXE 校验和与 GitHub ZIP 摘要一致；Windows 发布者签名状态为 `NotSigned`。
+这是编译和文件校验结果，尚未进行 Apple 在线签名或真机安装。
 
 ## 安装步骤
 
@@ -26,7 +32,8 @@
    商店页面：<https://apps.microsoft.com/detail/9np83lwlpz9k>。
 2. 用支持数据传输的数据线连接 iPhone，解锁并信任此电脑。Watch 保持与此 iPhone 配对。
 3. 下载并解压成功的 `WatchStress-Windows-installer-experimental` artifact。
-4. 启动 `WatchStress-Installer-experimental.exe`。它是便携程序。
+4. 启动 `WatchStress-Installer-experimental.exe`。它是便携程序，需要 Edge WebView2 运行库。
+   若本机缺少该运行库，从微软获取：<https://developer.microsoft.com/microsoft-edge/webview2/>。
 5. 在本地工具中选择手机、完成 Apple 账号登录与双重认证，导入
    `WatchStress-resign-required.ipa`，按界面执行安装。账号信息不需要发送到聊天或 GitHub。
 6. 按手机和 Watch 的实际提示启用开发者模式、信任开发者及接受配对请求。

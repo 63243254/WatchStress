@@ -1,0 +1,35 @@
+name: Build iPhone and Watch validation app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Run HRV baseline and freshness tests
+        working-directory: Core
+        run: swift test
+      - name: Check package graph validation
+        run: python3 scripts/test_package_validation.py
+      - name: Build embedded iPhone, Watch, and complication package
+        run: bash scripts/build-unsigned.sh
+      - name: Upload package requiring device signing and generated Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: WatchStress-validation
+          path: |
+            dist/WatchStress-resign-required.ipa
+            WatchStress.xcodeproj
+            Generated
+          if-no-files-found: error
+          retention-days: 7
+

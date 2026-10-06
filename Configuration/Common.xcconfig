@@ -1,0 +1,4 @@
+// Change both values together before building if you want a personal identifier.
+APP_BUNDLE_PREFIX = com.personal.watchstress
+APP_GROUP_IDENTIFIER = group.com.personal.watchstress
+

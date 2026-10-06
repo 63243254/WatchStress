@@ -1,0 +1,17 @@
+Generated/
+build/
+dist/
+*.xcodeproj/
+Core/.build/
+Core/.swiftpm/
+.DS_Store
+*.p12
+*.mobileprovision
+*.cer
+*.ipa
+*.zip
+*.log
+.env
+__pycache__/
+.local-tools/
+

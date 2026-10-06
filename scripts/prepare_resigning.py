@@ -40,7 +40,7 @@ def prepare(app: Path) -> None:
                 check=True,
             )
             result = subprocess.run(
-                ["codesign", "--display", "--entitlements", "-", str(bundle)],
+                ["codesign", "--display", "--entitlements", "-", "--xml", str(bundle)],
                 check=True, capture_output=True,
             )
             actual = plistlib.loads(result.stdout)

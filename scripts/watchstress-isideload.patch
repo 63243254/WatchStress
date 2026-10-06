@@ -1,0 +1,212 @@
+diff --git a/isideload/src/dev/app_groups.rs b/isideload/src/dev/app_groups.rs
+index dee44c2..e0b8567 100644
+--- a/isideload/src/dev/app_groups.rs
++++ b/isideload/src/dev/app_groups.rs
+@@ -1,7 +1,7 @@
+ use crate::dev::{
+     app_ids::AppId,
+     developer_session::DeveloperSession,
+-    device_type::{DeveloperDeviceType, dev_url},
++    device_type::{DeveloperDeviceType, apply_platform_to_body, dev_url},
+     teams::DeveloperTeam,
+ };
+ use plist_macro::plist;
+@@ -27,9 +27,11 @@ pub trait AppGroupsApi {
+         team: &DeveloperTeam,
+         device_type: impl Into<Option<DeveloperDeviceType>> + Send,
+     ) -> Result<Vec<AppGroup>, Report> {
+-        let body = plist!(dict {
++        let device_type = device_type.into();
++        let mut body = plist!(dict {
+             "teamId": &team.team_id,
+         });
++        apply_platform_to_body(&mut body, &device_type);
+ 
+         let app_groups: Vec<AppGroup> = self
+             .developer_session()
+@@ -51,11 +53,13 @@ pub trait AppGroupsApi {
+         identifier: &str,
+         device_type: impl Into<Option<DeveloperDeviceType>> + Send,
+     ) -> Result<AppGroup, Report> {
+-        let body = plist!(dict {
++        let device_type = device_type.into();
++        let mut body = plist!(dict {
+             "teamId": &team.team_id,
+             "name": name,
+             "identifier": identifier,
+         });
++        apply_platform_to_body(&mut body, &device_type);
+ 
+         let app_group: AppGroup = self
+             .developer_session()
+@@ -77,11 +81,13 @@ pub trait AppGroupsApi {
+         app_id: &AppId,
+         device_type: impl Into<Option<DeveloperDeviceType>> + Send,
+     ) -> Result<(), Report> {
+-        let body = plist!(dict {
++        let device_type = device_type.into();
++        let mut body = plist!(dict {
+             "teamId": &team.team_id,
+             "applicationGroups": &app_group.application_group,
+             "appIdId": &app_id.app_id_id,
+         });
++        apply_platform_to_body(&mut body, &device_type);
+ 
+         self.developer_session()
+             .send_dev_request_no_response(
+diff --git a/isideload/src/dev/app_ids.rs b/isideload/src/dev/app_ids.rs
+index f93285b..82cc26f 100644
+--- a/isideload/src/dev/app_ids.rs
++++ b/isideload/src/dev/app_ids.rs
+@@ -240,14 +240,26 @@ impl AppId {
+         dev_session: &mut DeveloperSession,
+         team: &DeveloperTeam,
+     ) -> Result<(), Report> {
+-        let app_group_feature_enabled = self.features.get_bool("APG3427HIY")?;
++        self.ensure_group_feature_for_device(dev_session, team, None).await
++    }
++
++    pub async fn ensure_group_feature_for_device(
++        &mut self,
++        dev_session: &mut DeveloperSession,
++        team: &DeveloperTeam,
++        device_type: impl Into<Option<DeveloperDeviceType>> + Send,
++    ) -> Result<(), Report> {
++        let app_group_feature_enabled = self.features
++            .get("APG3427HIY")
++            .and_then(|value| value.as_boolean())
++            .unwrap_or(false);
+ 
+         if !app_group_feature_enabled {
+             let body = plist!(dict {
+                 "APG3427HIY": true,
+             });
+             let new_features = dev_session
+-                .update_app_id(team, self, body, None)
++                .update_app_id(team, self, body, device_type)
+                 .await?
+                 .features;
+             self.features = new_features;
+diff --git a/isideload/src/sideload/bundle.rs b/isideload/src/sideload/bundle.rs
+index 21264dd..d74cf6d 100644
+--- a/isideload/src/sideload/bundle.rs
++++ b/isideload/src/sideload/bundle.rs
+@@ -240,6 +240,19 @@ impl Bundle {
+         bundles
+     }
+ 
++    /// WatchStress caches use the same app group as the newly provisioned bundles.
++    pub fn rewrite_stress_app_group(&mut self, group: &str) {
++        if self.app_info.contains_key("StressAppGroup") {
++            self.app_info.insert("StressAppGroup".to_string(), Value::String(group.to_string()));
++        }
++        for extension in &mut self.app_extensions {
++            extension.rewrite_stress_app_group(group);
++        }
++        for watch in &mut self.watch_apps {
++            watch.rewrite_stress_app_group(group);
++        }
++    }
++
+     pub fn write_info(&self) -> Result<(), Report> {
+         let info_plist_path = self.bundle_dir.join("Info.plist");
+         let mut file = File::create(&info_plist_path).context(SideloadError::InvalidBundle(
+@@ -396,6 +409,24 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn rewrites_shared_group_across_phone_watch_and_widget() {
++        let mut phone = test_bundle("com.example.app", "Phone");
++        let mut watch = test_bundle("com.example.app.watchkitapp", "Watch");
++        let mut widget = test_bundle("com.example.app.watchkitapp.widget", "Widget");
++        for bundle in [&mut phone, &mut watch, &mut widget] {
++            bundle.app_info.insert("StressAppGroup".to_string(), Value::String("group.old".to_string()));
++        }
++        watch.app_extensions.push(widget);
++        phone.watch_apps.push(watch);
++        phone.app_extensions.push(test_bundle("com.example.app.other", "Other"));
++        phone.rewrite_stress_app_group("group.com.example.app.TEAM");
++        for bundle in [ &phone, &phone.watch_apps[0], &phone.watch_apps[0].app_extensions[0] ] {
++            assert_eq!(bundle.app_info.get("StressAppGroup").and_then(Value::as_string), Some("group.com.example.app.TEAM"));
++        }
++        assert!(!phone.app_extensions[0].app_info.contains_key("StressAppGroup"));
++    }
++
+     #[test]
+     fn rewrites_watch_bundle_and_companion_identifier() {
+         let mut root = test_bundle("com.example.app", "Main");
+diff --git a/isideload/src/sideload/sideloader.rs b/isideload/src/sideload/sideloader.rs
+index 3cd3aa7..c383fc6 100644
+--- a/isideload/src/sideload/sideloader.rs
++++ b/isideload/src/sideload/sideloader.rs
+@@ -110,6 +110,11 @@ impl Sideloader {
+         app.update_bundle_id(&main_bundle_id, &main_app_id_str)?;
+         let watch_bundle_ids = app.watch_bundle_ids();
+ 
++        let shared_group_bundle_ids = app.bundle.collect_app_id_bundles().into_iter()
++            .filter(|bundle| bundle.app_info.contains_key("StressAppGroup"))
++            .filter_map(|bundle| bundle.bundle_identifier().map(str::to_string))
++            .collect::<std::collections::HashSet<_>>();
++
+         // Unsigned CI-built apps do not carry a signed entitlements blob. HealthKit's
+         // required Info.plist privacy keys do survive packaging, so use those keys to
+         // identify every app-ID-bearing bundle that needs the HealthKit App ID service.
+@@ -158,6 +163,14 @@ impl Sideloader {
+             .ensure_app_group(&team, &main_app_name, &group_identifier, None)
+             .await?;
+ 
++        let watch_app_group = if watch_bundle_ids.iter().any(|id| shared_group_bundle_ids.contains(id)) {
++            Some(self.dev_session.ensure_app_group(
++                &team, &main_app_name, &group_identifier, Some(DeveloperDeviceType::Watchos),
++            ).await.context("Failed to configure WatchStress watchOS shared app group")?)
++        } else {
++            None
++        };
++
+         for app_id in app_ids.iter_mut() {
+             if healthkit_bundle_ids.contains(&app_id.identifier) {
+                 let device_type = if watch_bundle_ids.contains(&app_id.identifier) {
+@@ -175,9 +188,17 @@ impl Sideloader {
+                     ))?;
+             }
+ 
+-            // The synthetic sideloading app group is an iOS-side concern.
+-            // Do not configure a watchOS App ID through the default iOS endpoint.
++            // Configure WatchStress's Watch/widget cache group using watchOS routing.
+             if watch_bundle_ids.contains(&app_id.identifier) {
++                if shared_group_bundle_ids.contains(&app_id.identifier) {
++                    app_id.ensure_group_feature_for_device(
++                        &mut self.dev_session, &team, Some(DeveloperDeviceType::Watchos),
++                    ).await?;
++                    self.dev_session.assign_app_group(
++                        &team, watch_app_group.as_ref().ok_or_report()?, app_id,
++                        Some(DeveloperDeviceType::Watchos),
++                    ).await?;
++                }
+                 continue;
+             }
+ 
+@@ -237,6 +258,14 @@ impl Sideloader {
+             let parsed_profile = ProvisioningProfile::parse(profile.encoded_profile.as_ref())?;
+             let entitlements = parsed_profile.entitlements().clone();
+ 
++            if shared_group_bundle_ids.contains(&bundle_id)
++                && !entitlements.get("com.apple.security.application-groups")
++                    .and_then(|value| value.as_array())
++                    .is_some_and(|groups| groups.iter().any(|value| value.as_string() == Some(group_identifier.as_str())))
++            {
++                bail!("Provisioning profile for {} is missing WatchStress's shared app group", bundle_id);
++            }
++
+             provisioning_profiles.push((bundle_id, profile, entitlements));
+         }
+ 
+@@ -248,6 +277,7 @@ impl Sideloader {
+ 
+         // Persist all rewritten Info.plists, including embedded watchOS apps and their extensions,
+         // before apple-codesign scans and signs the bundle tree.
++        app.bundle.rewrite_stress_app_group(&group_identifier);
+         app.bundle.write_info_recursive()?;
+ 
+         if let Some(callback) = &progress_callback {

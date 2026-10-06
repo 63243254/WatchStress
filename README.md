@@ -6,10 +6,11 @@
 ## 当前状态
 
 - 源码、XcodeGen 工程配置、GitHub Actions 编译流程已准备。
-- 源码已上传到私有仓库：<https://github.com/63243254/WatchStress>。
-- GitHub 云构建尚未启动；需先确认私有仓库免费额度，或明确授权公开源码后使用免费构建。
-- **尚未在 Xcode 编译，尚未生成 IPA，尚未在手机或手表安装验证。**
-- 当前 Windows 环境没有 Xcode / Apple SDK；本地静态检查不能代替真实编译。
+- 经用户授权，源码已公开：<https://github.com/63243254/WatchStress>。
+- 免费云构建成功：<https://github.com/63243254/WatchStress/actions/runs/37474088750>。
+- Xcode 27.0 / 27A266a 编译并归档三个 Target；5 个 Swift 算法测试、6 个包结构测试通过。
+- 已生成 `WatchStress-resign-required.ipa`，本地下载后包结构复核通过。
+- **尚未签名到设备，尚未在手机或手表安装验证。**
 - Windows 手表侧载方案仍是实验性项目，没有明确覆盖 S12 / watchOS 27 的兼容承诺。
 - 第一版仅在打开 App 或点击刷新时更新；不包含全天后台自动更新。
 
@@ -45,7 +46,7 @@
 当前源码已上传至上方仓库；如果迁移至另一仓库，将这个文件夹内的内容作为仓库根目录上传，
 保留 `.github/workflows/build.yml`。
 公开仓库的标准 GitHub-hosted runner 可免费使用；私有仓库取决于账号额度。
-公开源码是一个独立选择：确认接受公开后再更改当前私有仓库的可见性。
+当前仓库已经按用户明确选择设为公开，使用标准免费 runner。
 
 不要上传 Apple 密码、设备 UDID、证书、签名描述文件、配对文件或健康数据。
 这个编译流程不需要 Apple 登录信息。它先进行不使用 Apple 开发者签名的编译，
@@ -74,9 +75,12 @@ Xcode 27+ macOS runner / 借用的 Mac；不要将构建失败当作设备不支
 - iLoader：`70f37e9b4afc659ab44ec1944c034093f4cda416`
 - isideload：`f7b9f3da570edd6824c29680545e710846d07df5`
 
-截至本工程准备时，入口仓库没有发布可直接下载的 Windows 安装包；应按照作者文档
-从对应实现仓库获取或编译版本，不能假定下载普通 iLoader 就能安装 Watch App。
-此处只提供验证入口，不附带未经核实的安装程序。
+作者的固定验证版本有 Windows 云构建产物，但源码会跳过 Watch App Group 配置，
+也不会改写本 App 的 `StressAppGroup` 信息键。直接使用该版本不能验证表盘缓存功能。
+
+本仓库的 `build-installer.yml` 从上述固定源码构建专用实验工具，补充 Watch / Widget
+共享组配置、缓存标识改写和描述文件权限检查。详细步骤、修改与验证边界见
+[Windows 安装验证](WINDOWS_INSTALL.md)。该工具仍需要独立的真机验证。
 
 需要逐项验证：
 
@@ -135,11 +139,13 @@ Watch 的签名和安装路径，不要通过删除 Watch 或表盘扩展来绕�
 - `scripts/prepare_resigning.py`：保留权限的本地占位签名；不使用 Apple 账号。
 - `scripts/validate_ipa.py`：验证手机 / Watch / 表盘扩展的嵌套关系。
 - `.github/workflows/build.yml`：手动触发的云构建。
+- `.github/workflows/build-installer.yml`：从固定社区源码构建实验性 Windows 安装工具。
+- `scripts/watchstress-isideload.patch`：Watch / 表盘扩展共享组配置修正。
 
 ## 验收记录
 
 在 `VALIDATION.md` 记录实际验证结果；不要把源码检查或打包成功记为真机成功。
-下一阶段先运行云端编译并修复编译问题，再通过真机安装，然后考虑 HealthKit 后台投递、
+下一阶段验证 Windows 工具与真机安装，然后考虑 HealthKit 后台投递、
 数据同步与续签自动化。
 
 ## 官方与项目资料

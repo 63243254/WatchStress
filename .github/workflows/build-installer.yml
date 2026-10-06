@@ -1,0 +1,75 @@
+name: Build experimental Windows Watch installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/build/iloader/src-tauri/target
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Checkout community desktop source
+        uses: actions/checkout@v6
+        with:
+          repository: Rzbck/iloader
+          ref: 70f37e9b4afc659ab44ec1944c034093f4cda416
+          path: build/iloader
+          persist-credentials: false
+      - name: Checkout community signing source
+        uses: actions/checkout@v6
+        with:
+          repository: Rzbck/isideload
+          ref: f7b9f3da570edd6824c29680545e710846d07df5
+          path: build/isideload
+          persist-credentials: false
+      - name: Apply WatchStress shared-group support
+        run: python scripts/prepare_windows_installer.py build/iloader build/isideload
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Install native build prerequisites
+        run: choco install strawberryperl make --yes --no-progress
+      - uses: oven-sh/setup-bun@v2
+      - name: Cache Rust build dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            build/iloader/src-tauri/target
+          key: windows-watchstress-installer-${{ hashFiles('scripts/watchstress-isideload.patch', 'build/iloader/src-tauri/Cargo.lock') }}
+          restore-keys: windows-watchstress-installer-
+      - name: Run signing-source regression tests
+        run: cargo test --release --manifest-path build/isideload/Cargo.toml -p isideload --lib
+      - name: Install frontend dependencies
+        working-directory: build/iloader
+        run: bun install --frozen-lockfile
+      - name: Build portable Windows GUI
+        working-directory: build/iloader
+        run: bunx tauri build --no-bundle --config src-tauri/ci.conf.json
+      - name: Prepare portable executable and checksum
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item -LiteralPath build/iloader/src-tauri/target/release/iloader.exe -Destination dist/WatchStress-Installer-experimental.exe
+          $taskHash = (Get-FileHash dist/WatchStress-Installer-experimental.exe -Algorithm SHA256).Hash
+          Set-Content -LiteralPath dist/WatchStress-Installer-experimental.sha256 -Value "$taskHash  WatchStress-Installer-experimental.exe"
+      - name: Upload experimental tool with source attribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: WatchStress-Windows-installer-experimental
+          path: |
+            dist/WatchStress-Installer-experimental.exe
+            dist/WatchStress-Installer-experimental.sha256
+            WINDOWS_INSTALL.md
+            build/iloader/LICENSE*
+            build/isideload/LICENSE*
+          if-no-files-found: error
+          retention-days: 7

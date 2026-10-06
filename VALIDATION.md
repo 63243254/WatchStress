@@ -7,11 +7,13 @@
 | --- | --- | --- |
 | 源码与配置准备 | 已完成 | YAML、Python 语法和 Bash 语法检查通过，不能代表 Swift 编译成功 |
 | 包结构检查器 | 已完成 | 6 个测试通过；使用结构模拟包，不能代表真实 IPA 打包或安装成功 |
-| GitHub 连接与源码上传 | 已完成 | 63243254/WatchStress，私有仓库，main 分支 |
-| GitHub 云构建触发 | 未执行 | 免费额度尚未确认，公开源码选择尚未提交 |
-| Swift 算法测试 | 未执行 | 需要 Swift / 云端构建环境 |
-| Xcode 27 编译 | 未执行 | 当前电脑为 Windows |
-| 未签名 IPA 打包 | 未执行 | 编译成功后才可进行 |
+| GitHub 连接与源码上传 | 已完成 | 63243254/WatchStress，按用户授权公开，main 分支 |
+| GitHub 云构建 | 已完成 | Run 37474088750 成功，标准 xcode-27 runner |
+| Swift 算法测试 | 已完成 | 5 个测试通过，0 失败 |
+| Xcode 27 编译 | 已完成 | Xcode 27.0 / 27A266a，手机 / Watch / Widget 三个 Target 归档成功 |
+| 待设备签名 IPA 打包 | 已完成 | 本地占位签名验证通过；下载后嵌套结构复核通过，不代表已获得 Apple 设备签名 |
+| Windows 工具配置修正 | 已准备 | 固定社区源码，补充 Watch 共享组、缓存键改写与权限检查 |
+| Windows 工具云构建 | 未执行 | 待运行 build-installer.yml 的 Rust 测试及 GUI 构建 |
 | Windows 手机签名安装 | 未执行 | 需要用户设备与本地 Apple 登录 |
 | Windows S12 签名安装 | 未执行 | 侧载工具对此型号 / 系统尚未验证 |
 | HRV / 心率读取 | 未执行 | 需要真机授权 |
@@ -21,4 +23,8 @@
 
 记录后续结果时附带工具版本、系统版本与成功 / 失败阶段。
 不要放入 Apple 账号、密码、证书、UDID、配对记录或真实健康数据。
+
+App 构建源码：`4484b1f52d2f4a69da2bacf9b12935f62076fa2b`。
+构建：<https://github.com/63243254/WatchStress/actions/runs/37474088750>。
+IPA SHA-256：`DB1020209BC7778A4CDE66B63BE1D81F7C6EFE23BD65BECDC4E1DA0D49096085`。
 
